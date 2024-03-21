@@ -75,8 +75,6 @@ def warning_message_lambda(def_lambda_drive):
                             dirs_exist_ok=True)
             counter_patch += 1
         #  Необходимо добавить прогресс бар
-    else:
-        print('Пользователь нажал нет')
 
 
 # Прорисовка графического интерфейса, создание окна приложения
