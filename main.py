@@ -55,9 +55,9 @@ def regedit_search_folders(regedit_patch_1, regedit_patch_2):
 
 
 # Функция, которую вызывает лямбда, тело программы после нажатия кнопок
-def warning_message_lambda(dri):
+def warning_message_lambda(def_lambda_drive):
     if messagebox.askyesno(title='Подтверждение операции',
-                           message='Вы уверены что хотите выбрать диск ' + dri + '?'):
+                           message='Вы уверены что хотите выбрать диск ' + def_lambda_drive + '?'):
         # Поиск текущего расположения пользовательских папок через реестр
         counter_patch = 0  # Итератор для перебора массива содержащего ключи реестра
         regedit_patch_folders = list()
