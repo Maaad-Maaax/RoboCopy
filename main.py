@@ -8,7 +8,7 @@ import winreg
 drives = os.listdrives()
 # Массив с именами копируемых пользовательских папок
 folders = ['Видео', 'Документы', 'Загрузки', 'Изображения', 'Музыка', 'Рабочий стол']
-regeditpatchs = ['My Video', '{35286A68-3C57-41A1-BBB1-0EAE73D76C95}',  # Видео
+regedit_patch = ['My Video', '{35286A68-3C57-41A1-BBB1-0EAE73D76C95}',  # Видео
                  'Personal', '{F42EE2D3-909F-4907-8871-4C22FC0BF756}',  # Документы
                  '{374DE290-123F-4565-9164-39C4925E467B}', '{7D83EE9B-2244-4E70-B1F5-5393042AF1E4}',  # Загрузки
                  'My Pictures', '{0DDD015D-B06C-45D5-8C4C-F59713854639}',  # Изображения
@@ -17,64 +17,63 @@ regeditpatchs = ['My Video', '{35286A68-3C57-41A1-BBB1-0EAE73D76C95}',  # Вид
 
 
 # Функция обработки кнопок в которую помещена лямбда
-def warningmessage(driv):
-    return lambda: warningmessagelambda(driv)
+def warning_message(def_drive):
+    return lambda: warning_message_lambda(def_drive)
 
 
 # Функция поиска расположения пользовательских папок в реестре
-def regeditsearchfolders(folder1, folder2):
+def regedit_search_folders(regedit_patch_1, regedit_patch_2):
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                              r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders',
                              0, winreg.KEY_READ)
-        key = winreg.QueryValueEx(key, folder1)
+        key = winreg.QueryValueEx(key, regedit_patch_1)
         return key[0]
     except OSError:
         try:
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                                  r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders',
                                  0, winreg.KEY_READ)
-            key = winreg.QueryValueEx(key, folder2)
+            key = winreg.QueryValueEx(key, regedit_patch_2)
             return key[0]
         except OSError:
             try:
                 key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                                      r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders',
                                      0, winreg.KEY_READ)
-                key = winreg.QueryValueEx(key, folder1)
+                key = winreg.QueryValueEx(key, regedit_patch_1)
                 return key[0]
             except OSError:
                 try:
                     key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
                                          r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders',
                                          0, winreg.KEY_READ)
-                    key = winreg.QueryValueEx(key, folder2)
+                    key = winreg.QueryValueEx(key, regedit_patch_2)
                     return key[0]
                 except OSError:
                     print('Ключ реестра не найден')
 
 
 # Функция, которую вызывает лямбда, тело программы после нажатия кнопок
-def warningmessagelambda(dri):
+def warning_message_lambda(dri):
     if messagebox.askyesno(title='Подтверждение операции',
                            message='Вы уверены что хотите выбрать диск ' + dri + '?'):
-        print("!")
         # Поиск текущего расположения пользовательских папок через реестр
-        iregeditpatchs = 0  # Итератор для перебора массива содержащего ключи реестра
-        regeditpatchfolders = list()
-        while iregeditpatchs < len(regeditpatchs):
-            regeditpatchfolder = regeditsearchfolders(regeditpatchs[iregeditpatchs], regeditpatchs[iregeditpatchs + 1])
-            regeditpatchfolders.append(regeditpatchfolder)
-            iregeditpatchs += 2
-        print(regeditpatchfolders)
+        counter_patch = 0  # Итератор для перебора массива содержащего ключи реестра
+        regedit_patch_folders = list()
+        while counter_patch < len(regedit_patch):
+            regedit_patch_folder = regedit_search_folders(regedit_patch[counter_patch], regedit_patch[counter_patch+1])
+            regedit_patch_folders.append(regedit_patch_folder)
+            counter_patch += 2
+        print(regedit_patch_folders)
         # Копирование пользовательских каталогов
-        iregeditpatchs = 0
-        for regeditpatchfolder in regeditpatchfolders:
-            regeditpatchfolder = str(regeditpatchfolder)
-            shutil.copytree(regeditpatchfolder, 'D:\\Mirror\\' + folders[iregeditpatchs], symlinks=False, ignore=None,
+        counter_patch = 0
+        for regedit_patch_folder in regedit_patch_folders:
+            regedit_patch_folder = str(regedit_patch_folder)
+            shutil.copytree(regedit_patch_folder, 'D:\\Mirror\\' + folders[counter_patch], symlinks=False, ignore=None,
                             copy_function=shutil.copy2, ignore_dangling_symlinks=False,
                             dirs_exist_ok=True)
-            iregeditpatchs += 1
+            counter_patch += 1
         #  Необходимо добавить прогресс бар
     else:
         print('Пользователь нажал нет')
@@ -94,27 +93,27 @@ frame = tk.Frame(
 )
 
 # Блок с текстом
-messagetoadmin = tk.Label(
+message_to_admin = tk.Label(
     master=frame,
     text='Выберите диск назначения (расположения пользовательских папок):',
     bg='black',
     fg='white',
     font='Courier 22'
 )
-messagetoadmin.pack(pady=20)
+message_to_admin.pack(pady=20)
 
 # Вывод кнопок с информацией о диске и его емкости
 for drive in drives:
     drive = str(drive)
     try:
-        diskresurse = shutil.disk_usage(drive)
-        disktotal = str(round(diskresurse[0] / 1024 / 1024 * 0.000977))
-        diskused = str(round(diskresurse[2] / 1024 / 1024 * 0.000977))
-        buttoncontent = 'Диск ' + drive + ' (Использовано ' + diskused + 'ГБ из ' + disktotal + 'ГБ)'
+        disk_resource = shutil.disk_usage(drive)
+        disk_total = str(round(disk_resource[0] / 1024 / 1024 * 0.000977))
+        disk_used = str(round(disk_resource[2] / 1024 / 1024 * 0.000977))
+        button_content = 'Диск ' + drive + ' (Использовано ' + disk_used + 'ГБ из ' + disk_total + 'ГБ)'
         button = tk.Button(
             master=frame,
-            text=buttoncontent,
-            command=warningmessage(drive)
+            text=button_content,
+            command=warning_message(drive)
         )
         button.configure(
             bg='black',
@@ -127,10 +126,10 @@ for drive in drives:
             pady=4
         )
     except OSError:
-        disknone = 'Диск ' + str(drive) + ' (Нет накопителя)'
+        disk_none = 'Диск ' + str(drive) + ' (Нет накопителя)'
         button = tk.Button(
             master=frame,
-            text=disknone,
+            text=disk_none,
             bg='black',
             fg='white',
             font='Courier 18',
@@ -139,6 +138,7 @@ for drive in drives:
         )
         button.pack(pady=4)
 frame.pack(expand=True)
+
 # Центровка окна программы посередине экрана
 robocopy.update_idletasks()
 s = robocopy.geometry()
