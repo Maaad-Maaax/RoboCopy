@@ -3,6 +3,7 @@ from tkinter import messagebox
 import os
 import shutil
 import winreg
+import tkinter.ttk as ttk
 
 # Получение информации о существующих томах в системе
 drives = os.listdrives()
@@ -65,16 +66,19 @@ def warning_message_lambda(def_lambda_drive):
             regedit_patch_folder = regedit_search_folders(regedit_patch[counter_patch], regedit_patch[counter_patch+1])
             regedit_patch_folders.append(regedit_patch_folder)
             counter_patch += 2
-        print(regedit_patch_folders)
         # Копирование пользовательских каталогов
         counter_patch = 0
+        progress_bar['maximum'] = len(folders)
         for regedit_patch_folder in regedit_patch_folders:
-            regedit_patch_folder = str(regedit_patch_folder)
-            shutil.copytree(regedit_patch_folder, 'D:\\Mirror\\' + folders[counter_patch], symlinks=False, ignore=None,
+            src = str(regedit_patch_folder)
+            dst = 'D:\\Mirror\\' + folders[counter_patch]
+            shutil.copytree(src, dst, symlinks=False, ignore=True,
                             copy_function=shutil.copy2, ignore_dangling_symlinks=False,
                             dirs_exist_ok=True)
             counter_patch += 1
-        #  Необходимо добавить прогресс бар
+            # Прогресс бар
+            progress_bar['value'] += 1
+            robocopy.update()
 
 
 # Прорисовка графического интерфейса, создание окна приложения
@@ -89,6 +93,7 @@ frame = tk.Frame(
     padx=20,  # Задаём отступ по горизонтали.
     pady=20  # Задаём отступ по вертикали
 )
+frame.pack(expand=True)
 
 # Блок с текстом
 message_to_admin = tk.Label(
@@ -107,7 +112,7 @@ for drive in drives:
         disk_resource = shutil.disk_usage(drive)
         disk_total = str(round(disk_resource[0] / 1024 / 1024 * 0.000977))
         disk_used = str(round(disk_resource[2] / 1024 / 1024 * 0.000977))
-        button_content = 'Диск ' + drive + ' (Использовано ' + disk_used + 'ГБ из ' + disk_total + 'ГБ)'
+        button_content = 'Диск ' + drive + ' (Свободно ' + disk_used + 'ГБ из ' + disk_total + 'ГБ)'
         button = tk.Button(
             master=frame,
             text=button_content,
@@ -135,7 +140,10 @@ for drive in drives:
             width=44
         )
         button.pack(pady=4)
-frame.pack(expand=True)
+
+progress_bar = ttk.Progressbar(robocopy, orient="horizontal",
+                               mode="determinate", maximum=6, value=0)
+progress_bar.pack()
 
 # Центровка окна программы посередине экрана
 robocopy.update_idletasks()
