@@ -100,7 +100,7 @@ def warning_message_lambda(def_lambda_drive):
                     file_to = os.path.join(root_folder_to, file)
                     print(f'Копируется файл {file_do}')
                     # Информация о копирование
-                    patch_info = 'Копируется файл ' + file_do + '\n'
+                    patch_info = 'Копируется файл ' + '\'' + file_do + '\'' + '\n'
                     scr.insert(1.0, patch_info)
                     shutil.copy(file_do, file_to)
                     progress_bar['value'] += 1
@@ -111,7 +111,7 @@ def warning_message_lambda(def_lambda_drive):
                     folder_to = os.path.join(root_folder_to, file)
                     print(f'Копируется папка {folder_do}')
                     # Информация о копирование
-                    patch_info = 'Копируется папка ' + folder_do + '\n'
+                    patch_info = 'Копируется папка ' + '\'' + folder_do + '\'' + '\n'
                     scr.insert(1.0, patch_info)
                     shutil.copytree(folder_do, folder_to)
                     progress_bar['value'] += 1
@@ -147,6 +147,7 @@ def warning_message_lambda(def_lambda_drive):
 robocopy = tk.Tk()
 robocopy.title('RoboCopy 1.0')
 robocopy.iconbitmap('RoboCopy.ico')
+robocopy.attributes('-alpha', 0.9)
 
 # Общий контейнер
 frame = tk.Frame(
