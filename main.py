@@ -1,15 +1,30 @@
 from tkinter import *
-import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
-import os
+import tkinter
 import shutil
 import winreg
+import os
+
+"Внесение изменений в ключи реестра, отвечающих за расположение пользовательских папок"
+#  НЕ ЗАБЫТЬ СКОПИРОВАТЬ МЕТАДАННЫЕ КОРНЕВЫХ ПАПОК
+# Параметры записи реестра
+wr_branch = winreg.HKEY_CURRENT_USER
+wr_key = r'Software\Microsoft\Internet Explorer\Main'
+wr_parameter = '{374DE290-123F-4565-9164-39C4925E467B}'
+wr_value_key = 'A:\\Зеркало\\Загрузки'
+wr_keys = winreg.OpenKey(wr_branch, wr_key, 0, winreg.KEY_ALL_ACCESS)  # Открыть ключ
+try:
+    winreg.QueryValueEx(wr_keys, wr_parameter)  # Существует ли параметр
+    winreg.SetValueEx(wr_keys, wr_parameter, 0, winreg.REG_SZ, wr_value_key)  # Изменить значение параметра
+except FileNotFoundError:
+    print('Не найден')
+winreg.CloseKey(wr_keys)
 
 # Получение информации о существующих томах в системе
 drives = os.listdrives()
 # Массив с именами копируемых пользовательских папок
-folders = ['Видео', 'Документы', 'Загрузки', 'Изображения', 'Музыка']
+folders = ['Видео', 'Документы', 'Загрузки', 'Изображения', 'Музыка', 'Рабочий стол']
 regedit_patch = ['My Video', '{35286A68-3C57-41A1-BBB1-0EAE73D76C95}',  # Видео
                  'Personal', '{F42EE2D3-909F-4907-8871-4C22FC0BF756}',  # Документы
                  '{374DE290-123F-4565-9164-39C4925E467B}', '{7D83EE9B-2244-4E70-B1F5-5393042AF1E4}',  # Загрузки
@@ -87,6 +102,7 @@ def warning_message_lambda(def_lambda_drive):
         number_of_roots = 0
         for regedit_patch_folder in regedit_patch_folders:
             number_of_roots += len(os.listdir(regedit_patch_folder))
+            # print(f'Папка {regedit_patch_folder} содержит {len(os.listdir(regedit_patch_folder))} объектов')
         # Копирование пользовательских каталогов
         progress_bar['maximum'] = number_of_roots
         progress_bar['value'] = 0
@@ -95,62 +111,54 @@ def warning_message_lambda(def_lambda_drive):
             root_folder_to = os.path.join(def_lambda_drive, 'Mirror', folders[copy_i])
             for file in os.listdir(regedit_patch_folders[copy_i]):
                 regedit_patch_folder = regedit_patch_folders[copy_i]
-                if os.path.isfile(os.path.join(regedit_patch_folder, file)):
+                if os.path.isfile(os.path.join(regedit_patch_folder, file)):  # Если это файл то
                     file_do = os.path.join(regedit_patch_folder, file)
                     file_to = os.path.join(root_folder_to, file)
-                    print(f'Копируется файл {file_do}')
-                    # Информация о копирование
-                    patch_info = 'Копируется файл ' + '\'' + file_do + '\'' + '\n'
+                    percent_bar = str(round(progress_bar['value'] / progress_bar['maximum'] * 100))  # % прогресса
+                    patch_info = '|' + percent_bar + '%|...копирование файла ' + '\'' + file_do + '\'' + '\n'
                     scr.insert(1.0, patch_info)
-                    shutil.copy(file_do, file_to)
-                    progress_bar['value'] += 1
-                    robocopy.update()
-                    # print(f'Файл {file_do} скопирован!')
-                if os.path.isdir(os.path.join(regedit_patch_folder, file)):
+                    if not os.path.isfile(file_to):  # Если этого файла нет в конечной папке
+                        # print(f'Копирование файла {file_do}')
+                        # Информация о копирование
+                        shutil.copy2(file_do, file_to, follow_symlinks=False)
+                        progress_bar['value'] += 1
+                        robocopy.update()
+                        # print(f'Файл {file_do} скопирован!')
+                    else:
+                        patch_info = ('|' + percent_bar + '%|' + ' Warning: Файл \'' + str(file_to)
+                                      + '\' уже существует\n')
+                        scr.insert(1.0, patch_info)
+                        progress_bar['maximum'] -= 1  # Уменьшаем размер пр-бара, поскольку пропущен был файл
+                if os.path.isdir(os.path.join(regedit_patch_folder, file)):  # Если это папка то
                     folder_do = os.path.join(regedit_patch_folder, file)
                     folder_to = os.path.join(root_folder_to, file)
-                    print(f'Копируется папка {folder_do}')
+                    # print(f'Копирование директории {folder_do}')
                     # Информация о копирование
-                    patch_info = 'Копируется папка ' + '\'' + folder_do + '\'' + '\n'
+                    percent_bar = str(round(progress_bar['value'] / progress_bar['maximum'] * 100))  # % прогресса
+                    patch_info = '|' + percent_bar + '%|...копирование директории ' + '\'' + folder_do + '\'' + '\n'
                     scr.insert(1.0, patch_info)
-                    shutil.copytree(folder_do, folder_to)
+                    try:
+                        shutil.copytree(folder_do, folder_to, symlinks=True, ignore=None,
+                                        copy_function=shutil.copy2, dirs_exist_ok=False, ignore_dangling_symlinks=True)
+                    except FileExistsError:
+                        patch_info = ('|' + percent_bar + '%|' + ' Warning: Директория \'' + str(folder_to)
+                                      + '\' уже существует\n')
+                        scr.insert(1.0, patch_info)
                     progress_bar['value'] += 1
                     robocopy.update()
                     # print(f'Папка {folder_do} скопирована!')
             copy_i += 1
+        scr.insert(1.0, '|100%|...success full!\n')
 
-
-"""
-        dirs_patch = list()
-        # Формирование массива файлов
-        for regedit_patch_folder in regedit_patch_folders:
-            directory = str(regedit_patch_folder)
-            for root, dirs, files in os.walk(directory):
-                for only_dir in dirs:
-                    dir_patch = os.path.join(root, only_dir)
-                    dirs_patch.append(dir_patch)
-        # Копирование пользовательских каталогов
-        counter_patch = 0
-        progress_bar['maximum'] = len(dirs_patch)
-        for regedit_patch_folder in regedit_patch_folders:
-            progress_bar['value'] = 0
-            src = str(regedit_patch_folder)
-            dst = 'D:\\Mirror\\' + folders[counter_patch]
-            shutil.copytree(src, dst, symlinks=False, ignore=None,
-                            copy_function=shutil.copy2, ignore_dangling_symlinks=False,
-                            dirs_exist_ok=True)
-            counter_patch += 1
-            progress_bar['value'] += 1
-            robocopy.update()"""
 
 # Прорисовка графического интерфейса, создание окна приложения
-robocopy = tk.Tk()
+robocopy = tkinter.Tk()
 robocopy.title('RoboCopy 1.0')
 robocopy.iconbitmap('RoboCopy.ico')
-robocopy.attributes('-alpha', 0.9)
+robocopy.attributes('-alpha', 0.875)
 
 # Общий контейнер
-frame = tk.Frame(
+frame = tkinter.Frame(
     robocopy,
     bg='black',
     padx=20,  # Задаём отступ по горизонтали.
@@ -159,7 +167,7 @@ frame = tk.Frame(
 frame.pack(expand=True)
 
 # Блок с текстом
-message_to_admin = tk.Label(
+message_to_admin = tkinter.Label(
     master=frame,
     text='Выберите диск назначения (расположения пользовательских папок):',
     bg='black',
@@ -176,7 +184,7 @@ for drive in drives:
         disk_total = str(round(disk_resource[0] / 1024 / 1024 * 0.000977))
         disk_used = str(round(disk_resource[2] / 1024 / 1024 * 0.000977))
         button_content = 'Диск ' + drive + ' (Свободно ' + disk_used + 'ГБ из ' + disk_total + 'ГБ)'
-        button = tk.Button(
+        button = tkinter.Button(
             master=frame,
             text=button_content,
             command=warning_message(drive)
@@ -193,7 +201,7 @@ for drive in drives:
         )
     except OSError:
         disk_none = 'Диск ' + str(drive) + ' (Нет накопителя)'
-        button = tk.Button(
+        button = tkinter.Button(
             master=frame,
             text=disk_none,
             bg='black',
@@ -206,21 +214,13 @@ for drive in drives:
 
 # Поле вывода информации о копируемых файлах
 scr = Text(robocopy, height=2, font=('Courier', 10), bg='black', fg='white', wrap="word", padx=10, pady=5, bd=0)
-scr.pack(fill=BOTH)  # Прокрутить позицию текстового поля на странице
+scr.pack(fill=BOTH)
 
 # Прогресс бар
 progress_bar = ttk.Progressbar(robocopy, orient="horizontal",
                                mode="determinate", maximum=6, value=0, length=1117)
 progress_bar.pack()
-'''display_text = tk.StringVar()
-display = tk.Text(robocopy, textvariable=display_text)
-display.pack()
 
-# Cкрол для поля вывода информации
-scrollbar = ttk.Scrollbar(orient="vertical", command=display.yview)
-scrollbar.pack(side=RIGHT, fill=Y)
-display["yscrollcommand"] = scrollbar.set
-'''
 # Центровка окна программы посередине экрана
 robocopy.update_idletasks()
 s = robocopy.geometry()
