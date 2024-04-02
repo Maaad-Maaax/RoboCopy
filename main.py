@@ -6,33 +6,23 @@ import shutil
 import winreg
 import os
 
-"Внесение изменений в ключи реестра, отвечающих за расположение пользовательских папок"
-#  НЕ ЗАБЫТЬ СКОПИРОВАТЬ МЕТАДАННЫЕ КОРНЕВЫХ ПАПОК
-# Параметры записи реестра
-wr_branch = winreg.HKEY_CURRENT_USER
-wr_key = r'Software\Microsoft\Internet Explorer\Main'
-wr_parameter = '{374DE290-123F-4565-9164-39C4925E467B}'
-wr_value_key = 'A:\\Зеркало\\Загрузки'
-wr_keys = winreg.OpenKey(wr_branch, wr_key, 0, winreg.KEY_ALL_ACCESS)  # Открыть ключ
-try:
-    winreg.QueryValueEx(wr_keys, wr_parameter)  # Существует ли параметр
-    winreg.SetValueEx(wr_keys, wr_parameter, 0, winreg.REG_SZ, wr_value_key)  # Изменить значение параметра
-except FileNotFoundError:
-    print('Не найден')
-winreg.CloseKey(wr_keys)
+"""Конфигурация"""
 
-# Получение информации о существующих томах в системе
-drives = os.listdrives()
+drives = os.listdrives()  # Получение информации о существующих томах в системе
+
 # Массив с именами копируемых пользовательских папок
 folders = ['Видео', 'Документы', 'Загрузки', 'Изображения', 'Музыка', 'Рабочий стол']
+# Названия параметров реестра отвечающих за расположение пользовательских папок
 regedit_patch = ['My Video', '{35286A68-3C57-41A1-BBB1-0EAE73D76C95}',  # Видео
                  'Personal', '{F42EE2D3-909F-4907-8871-4C22FC0BF756}',  # Документы
                  '{374DE290-123F-4565-9164-39C4925E467B}', '{7D83EE9B-2244-4E70-B1F5-5393042AF1E4}',  # Загрузки
                  'My Pictures', '{0DDD015D-B06C-45D5-8C4C-F59713854639}',  # Изображения
-                 'My Music', '{A0C69A99-21C8-4671-8703-7934162FCF1D}']  # Музыка
+                 'My Music', '{A0C69A99-21C8-4671-8703-7934162FCF1D}',  # Музыка
+                 'Desktop', '{754AC886-DF64-4CBA-86B5-F7FBF4FBCEF5}']  # Рабочий стол
 
 
-#  Не забыть добавить рабочий стол
+"""Блоки функций"""
+
 
 # Функция обработки кнопок в которую помещена лямбда
 def warning_message(def_drive):
@@ -72,24 +62,22 @@ def regedit_search_folders(regedit_patch_1, regedit_patch_2):
                     print('Ключ реестра не найден')
 
 
-# Функция, которую вызывает лямбда, тело программы после нажатия кнопок
+def wr_regedit_patch(wr_branch, wr_key, wr_parameter, wr_value_key):
+    wr_keys = winreg.OpenKey(wr_branch, wr_key, 0, winreg.KEY_ALL_ACCESS)  # Открыть ключ
+    try:
+        winreg.QueryValueEx(wr_keys, wr_parameter)  # Существует ли параметр
+        winreg.SetValueEx(wr_keys, wr_parameter, 0, winreg.REG_SZ, wr_value_key)  # Изменить значение параметра
+        print(f'Найден {wr_branch} + {wr_key} + {wr_parameter}')
+    except FileNotFoundError:
+        print(f'Не найден {wr_branch} + {wr_key} + {wr_parameter}')
+    winreg.CloseKey(wr_keys)
+
+
+# Главная функция, тело программы, которую вызывает лямбда, тело программы после нажатия кнопок
 def warning_message_lambda(def_lambda_drive):
     if messagebox.askyesno(title='Подтверждение операции',
                            message='Вы уверены что хотите выбрать диск ' + def_lambda_drive + '?'):
-        # Создание нового дерева каталогов
-        root = os.path.join(def_lambda_drive, 'Mirror')
-        if not os.path.isdir(root):
-            os.mkdir(root)
-            print(f'Папка {root} создана!')
-        else:
-            print(f'Папка {root} уже существует!')
-        for folder in folders:
-            folder = os.path.join(root, folder)
-            if not os.path.isdir(folder):
-                os.mkdir(os.path.join(root, folder))
-                print(f'Папка {os.path.join(root, folder)} создана!')
-            else:
-                print(f'Папка {os.path.join(root, folder)} уже существует!')
+
         # Поиск текущего расположения пользовательских папок через реестр
         counter_patch = 0  # Итератор для перебора массива содержащего ключи реестра
         regedit_patch_folders = list()
@@ -98,14 +86,35 @@ def warning_message_lambda(def_lambda_drive):
                                                           regedit_patch[counter_patch + 1])
             regedit_patch_folders.append(regedit_patch_folder)
             counter_patch += 2
+
+        # Создание нового дерева каталогов
+        root = os.path.join(def_lambda_drive, 'Mirror')
+        if not os.path.isdir(root):
+            os.mkdir(root)
+            # print(f'Папка {root} создана!')
+        #  else:
+        #  print(f'Папка {root} уже существует!')
+        i_new_folders = 0
+        while i_new_folders < len(folders):
+            stat_folder_to = regedit_patch_folders[i_new_folders]
+            stat_folder_do = os.path.join(root, folders[i_new_folders])
+            if not os.path.isdir(stat_folder_do):
+                # Создание новой папки и копирование метаданных исходной
+                os.mkdir(stat_folder_do)
+                shutil.copystat(stat_folder_to, stat_folder_do)
+                # print(f'Папка {stat_folder_do} создана!')
+            #  else:
+            # print(f'Папка {stat_folder_do} уже существует!')
+            i_new_folders += 1
+
         # Подсчет максимального значения прогресс бара
         number_of_roots = 0
-        for regedit_patch_folder in regedit_patch_folders:
+        for regedit_patch_folder in regedit_patch_folders:  # Перебор директорий и подсчет вложений (файлы, папки)
             number_of_roots += len(os.listdir(regedit_patch_folder))
             # print(f'Папка {regedit_patch_folder} содержит {len(os.listdir(regedit_patch_folder))} объектов')
-        # Копирование пользовательских каталогов
-        progress_bar['maximum'] = number_of_roots
-        progress_bar['value'] = 0
+
+        # Копирование пользовательских каталогов и обновление прогресс бара
+        progress_bar['maximum'] = number_of_roots  # Максимальное значение прогресс бара
         copy_i = 0
         while copy_i < len(regedit_patch_folders):
             root_folder_to = os.path.join(def_lambda_drive, 'Mirror', folders[copy_i])
@@ -149,24 +158,48 @@ def warning_message_lambda(def_lambda_drive):
                     # print(f'Папка {folder_do} скопирована!')
             copy_i += 1
         scr.insert(1.0, '|100%|...success full!\n')
+        # Правка реестра
+        # Параметры записи реестра
+        i_wr_regedit_patch = 0  # Итератор для перебора параметров реестра
+        wr_branch = winreg.HKEY_CURRENT_USER
+        wr_key1 = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders'
+        wr_key2 = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders'
+        # Изменение параметров реестра
+        for folder in folders:
+            # Значение параметра ключа реестра
+            wr_value_key = os.path.join(def_lambda_drive, 'Mirror', folder)
+            # Ключ Shell Folders, человеко читаемые параметры
+            wr_parameter = regedit_patch[i_wr_regedit_patch]
+            wr_regedit_patch(wr_branch, wr_key1, wr_parameter, wr_value_key)
+            # Ключ Shell Folders, человеко не читаемые параметры
+            wr_parameter = regedit_patch[i_wr_regedit_patch+1]
+            wr_regedit_patch(wr_branch, wr_key1, wr_parameter, wr_value_key)
+            # Ключ User Shell Folders, человеко читаемые параметры
+            wr_parameter = regedit_patch[i_wr_regedit_patch]
+            wr_regedit_patch(wr_branch, wr_key2, wr_parameter, wr_value_key)
+            # Ключ User Shell Folders, человеко не читаемые параметры
+            wr_parameter = regedit_patch[i_wr_regedit_patch+1]
+            wr_regedit_patch(wr_branch, wr_key2, wr_parameter, wr_value_key)
+
+            i_wr_regedit_patch += 2
 
 
-# Прорисовка графического интерфейса, создание окна приложения
-robocopy = tkinter.Tk()
-robocopy.title('RoboCopy 1.0')
-robocopy.iconbitmap('RoboCopy.ico')
-robocopy.attributes('-alpha', 0.875)
+"""Отрисовка графического интерфейса библиотекой tkinter"""
+robocopy = tkinter.Tk()  # Объявление окна приложения
+robocopy.title('RoboCopy 1.0')  # Заголовок окна приложения
+robocopy.iconbitmap('RoboCopy.ico')  # ICO приложения
+robocopy.attributes('-alpha', 0.875)  # Задание прозрачности окна приложения
 
-# Общий контейнер
+# Главный контейнер
 frame = tkinter.Frame(
     robocopy,
-    bg='black',
-    padx=20,  # Задаём отступ по горизонтали.
+    bg='black',  # Фон окна приложения
+    padx=20,  # Задаём отступ по горизонтали
     pady=20  # Задаём отступ по вертикали
 )
-frame.pack(expand=True)
+frame.pack(expand=True)  # Позиционирование главного контейнера
 
-# Блок с текстом
+# Блок с текстом расположенный под заголовком
 message_to_admin = tkinter.Label(
     master=frame,
     text='Выберите диск назначения (расположения пользовательских папок):',
@@ -177,13 +210,14 @@ message_to_admin = tkinter.Label(
 message_to_admin.pack(pady=20)
 
 # Вывод кнопок с информацией о диске и его емкости
-for drive in drives:
+for drive in drives:  # Перебор массива хранящего информацию о дисках
     drive = str(drive)
+    #  Обработка исключения вызываемого при отсутствии дискового накопителя
     try:
-        disk_resource = shutil.disk_usage(drive)
-        disk_total = str(round(disk_resource[0] / 1024 / 1024 * 0.000977))
-        disk_used = str(round(disk_resource[2] / 1024 / 1024 * 0.000977))
-        button_content = 'Диск ' + drive + ' (Свободно ' + disk_used + 'ГБ из ' + disk_total + 'ГБ)'
+        disk_resource = shutil.disk_usage(drive)  # Считывание емкости диска
+        disk_total = str(round(disk_resource[0] / 1024 / 1024 * 0.000977))  # Общая емкость
+        disk_free = str(round(disk_resource[2] / 1024 / 1024 * 0.000977))  # Свободно на диске
+        button_content = 'Диск ' + drive + ' (Свободно ' + disk_free + 'ГБ из ' + disk_total + 'ГБ)'
         button = tkinter.Button(
             master=frame,
             text=button_content,
@@ -207,18 +241,33 @@ for drive in drives:
             bg='black',
             fg='white',
             font='Courier 18',
-            state='disabled',
+            state='disabled',  # Кнопка не активна
             width=44
         )
         button.pack(pady=4)
 
 # Поле вывода информации о копируемых файлах
-scr = Text(robocopy, height=2, font=('Courier', 10), bg='black', fg='white', wrap="word", padx=10, pady=5, bd=0)
-scr.pack(fill=BOTH)
+scr = Text(robocopy,
+           height=2,
+           font=('Courier', 10),
+           bg='black',
+           fg='white',
+           wrap="word",
+           padx=10,
+           pady=5,
+           bd=0
+           )
+scr.pack(
+    fill=BOTH
+)
 
 # Прогресс бар
-progress_bar = ttk.Progressbar(robocopy, orient="horizontal",
-                               mode="determinate", maximum=6, value=0, length=1117)
+progress_bar = ttk.Progressbar(robocopy,
+                               orient="horizontal",
+                               mode="determinate",
+                               value=0,
+                               length=1117
+                               )
 progress_bar.pack()
 
 # Центровка окна программы посередине экрана
@@ -235,5 +284,5 @@ h = h // 2
 w = w - width_root // 2
 h = h - height_root // 2
 robocopy.geometry('+{}+{}'.format(w, h))
-robocopy.resizable(width=False, height=False)
+robocopy.resizable(width=False, height=False)  # Запретить пользователю изменять размеры
 robocopy.mainloop()
