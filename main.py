@@ -5,21 +5,22 @@ import tkinter
 import shutil
 import winreg
 import os
+import sys
 
 """Конфигурация"""
 
 drives = os.listdrives()  # Получение информации о существующих томах в системе
 
-# Массив с именами копируемых пользовательских папок
+# Названия копируемых пользовательских папок
 folders = ['Видео', 'Документы', 'Загрузки', 'Изображения', 'Музыка', 'Рабочий стол']
-# Названия параметров реестра отвечающих за расположение пользовательских папок
+# Названия параметров реестра отвечающих за расположение данных пользовательских папок
 regedit_patch = ['My Video', '{35286A68-3C57-41A1-BBB1-0EAE73D76C95}',  # Видео
                  'Personal', '{F42EE2D3-909F-4907-8871-4C22FC0BF756}',  # Документы
                  '{374DE290-123F-4565-9164-39C4925E467B}', '{7D83EE9B-2244-4E70-B1F5-5393042AF1E4}',  # Загрузки
                  'My Pictures', '{0DDD015D-B06C-45D5-8C4C-F59713854639}',  # Изображения
                  'My Music', '{A0C69A99-21C8-4671-8703-7934162FCF1D}',  # Музыка
                  'Desktop', '{754AC886-DF64-4CBA-86B5-F7FBF4FBCEF5}']  # Рабочий стол
-
+destination_folder = "Mirror"  # Название новой корневой папки для пользовательских данных
 
 """Блоки функций"""
 
@@ -67,7 +68,7 @@ def wr_regedit_patch(wr_branch, wr_key, wr_parameter, wr_value_key):
     try:
         winreg.QueryValueEx(wr_keys, wr_parameter)  # Существует ли параметр
         winreg.SetValueEx(wr_keys, wr_parameter, 0, winreg.REG_SZ, wr_value_key)  # Изменить значение параметра
-        print(f'Найден {wr_branch} + {wr_key} + {wr_parameter}')
+        #  print(f'Найден {wr_branch} + {wr_key} + {wr_parameter}')
     except FileNotFoundError:
         print(f'Не найден {wr_branch} + {wr_key} + {wr_parameter}')
     winreg.CloseKey(wr_keys)
@@ -77,7 +78,6 @@ def wr_regedit_patch(wr_branch, wr_key, wr_parameter, wr_value_key):
 def warning_message_lambda(def_lambda_drive):
     if messagebox.askyesno(title='Подтверждение операции',
                            message='Вы уверены что хотите выбрать диск ' + def_lambda_drive + '?'):
-
         # Поиск текущего расположения пользовательских папок через реестр
         counter_patch = 0  # Итератор для перебора массива содержащего ключи реестра
         regedit_patch_folders = list()
@@ -86,14 +86,16 @@ def warning_message_lambda(def_lambda_drive):
                                                           regedit_patch[counter_patch + 1])
             regedit_patch_folders.append(regedit_patch_folder)
             counter_patch += 2
-
         # Создание нового дерева каталогов
-        root = os.path.join(def_lambda_drive, 'Mirror')
+        root = os.path.join(def_lambda_drive, destination_folder)
         if not os.path.isdir(root):
             os.mkdir(root)
             # print(f'Папка {root} создана!')
-        #  else:
-        #  print(f'Папка {root} уже существует!')
+        else:
+            showwarning = str("Диск " + "'" + def_lambda_drive + "'" + " уже содержит пользовательские данные!"
+                                                                       "\n" + "'" + root + "'" + " уже существует!")
+            messagebox.showwarning("Внимание", showwarning)
+            sys.exit()
         i_new_folders = 0
         while i_new_folders < len(folders):
             stat_folder_to = regedit_patch_folders[i_new_folders]
@@ -117,7 +119,7 @@ def warning_message_lambda(def_lambda_drive):
         progress_bar['maximum'] = number_of_roots  # Максимальное значение прогресс бара
         copy_i = 0
         while copy_i < len(regedit_patch_folders):
-            root_folder_to = os.path.join(def_lambda_drive, 'Mirror', folders[copy_i])
+            root_folder_to = os.path.join(def_lambda_drive, destination_folder, folders[copy_i])
             for file in os.listdir(regedit_patch_folders[copy_i]):
                 regedit_patch_folder = regedit_patch_folders[copy_i]
                 if os.path.isfile(os.path.join(regedit_patch_folder, file)):  # Если это файл то
@@ -158,6 +160,7 @@ def warning_message_lambda(def_lambda_drive):
                     # print(f'Папка {folder_do} скопирована!')
             copy_i += 1
         scr.insert(1.0, '|100%|...success full!\n')
+
         # Правка реестра
         # Параметры записи реестра
         i_wr_regedit_patch = 0  # Итератор для перебора параметров реестра
@@ -167,21 +170,46 @@ def warning_message_lambda(def_lambda_drive):
         # Изменение параметров реестра
         for folder in folders:
             # Значение параметра ключа реестра
-            wr_value_key = os.path.join(def_lambda_drive, 'Mirror', folder)
+            wr_value_key = os.path.join(def_lambda_drive, destination_folder, folder)
             # Ключ Shell Folders, человеко читаемые параметры
             wr_parameter = regedit_patch[i_wr_regedit_patch]
             wr_regedit_patch(wr_branch, wr_key1, wr_parameter, wr_value_key)
             # Ключ Shell Folders, человеко не читаемые параметры
-            wr_parameter = regedit_patch[i_wr_regedit_patch+1]
+            wr_parameter = regedit_patch[i_wr_regedit_patch + 1]
             wr_regedit_patch(wr_branch, wr_key1, wr_parameter, wr_value_key)
             # Ключ User Shell Folders, человеко читаемые параметры
             wr_parameter = regedit_patch[i_wr_regedit_patch]
             wr_regedit_patch(wr_branch, wr_key2, wr_parameter, wr_value_key)
             # Ключ User Shell Folders, человеко не читаемые параметры
-            wr_parameter = regedit_patch[i_wr_regedit_patch+1]
+            wr_parameter = regedit_patch[i_wr_regedit_patch + 1]
             wr_regedit_patch(wr_branch, wr_key2, wr_parameter, wr_value_key)
-
             i_wr_regedit_patch += 2
+        #  Удаление файлов по предыдущему расположению
+        if messagebox.askyesno(title='Подтверждение операции',
+                               message='Операция успешно завершена! \n\n'
+                                       'Удалить данные предыдущего расположения?'):
+            for regedit_patch_folder in regedit_patch_folders:
+                shutil.rmtree(regedit_patch_folder, ignore_errors=True)
+        if messagebox.askyesno(title='Подтверждение операции',
+                               message='Требуется перезагрузка ОС. Перезагрузить?'):
+            os.system("shutdown /r /t 0")
+        #  Добавление задачи планировщика, для копирования на системный диск пользовательских данных
+        #  Создание .bat файла
+        def_lambda_drive = 'D:\\'
+        # Содержимое bat файла
+        bat_content = "robocopy " + def_lambda_drive + destination_folder + " C:\\" + destination_folder + " /MIR"
+        # bat будет создан на выбранном пользователем диске
+        bat_path = os.path.join(def_lambda_drive, 'RoboCopy_start.bat')
+        if not os.path.isfile(bat_path):
+            with open(bat_path, 'w+') as bat:
+                bat.write(bat_content)
+                bat.close()
+            #  Объявление задачи, для планировщика windows на исполнение bat файла
+            cmd_bat = 'SchTasks /Create /SC DAILY /TN "RoboCopy" /TR ' + bat_path + ' /ST 12:00'
+            #  Кодировка терминала python
+            os.system("chcp 65001 > nul")
+            #  Исполнение задачи через интерфейс командной строки
+            os.system(cmd_bat)
 
 
 """Отрисовка графического интерфейса библиотекой tkinter"""
