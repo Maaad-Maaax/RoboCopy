@@ -22,6 +22,7 @@ regedit_patch = ['My Video', '{35286A68-3C57-41A1-BBB1-0EAE73D76C95}',  # Вид
                  'Desktop', '{754AC886-DF64-4CBA-86B5-F7FBF4FBCEF5}']  # Рабочий стол
 destination_folder = "Mirror"  # Название новой корневой папки для пользовательских данных
 
+
 """Блоки функций"""
 
 
@@ -63,6 +64,7 @@ def regedit_search_folders(regedit_patch_1, regedit_patch_2):
                     print('Ключ реестра не найден')
 
 
+#  Изменение параметров ключей реестра отвечающих за расположение пользовательских папок
 def wr_regedit_patch(wr_branch, wr_key, wr_parameter, wr_value_key):
     wr_keys = winreg.OpenKey(wr_branch, wr_key, 0, winreg.KEY_ALL_ACCESS)  # Открыть ключ
     try:
@@ -84,7 +86,7 @@ def warning_message_lambda(def_lambda_drive):
         while counter_patch < len(regedit_patch):
             regedit_patch_folder = regedit_search_folders(regedit_patch[counter_patch],
                                                           regedit_patch[counter_patch + 1])
-            regedit_patch_folders.append(regedit_patch_folder)
+            regedit_patch_folders.append(regedit_patch_folder)  # Массив содержащий текущие пути
             counter_patch += 2
         # Создание нового дерева каталогов
         root = os.path.join(def_lambda_drive, destination_folder)
@@ -184,15 +186,6 @@ def warning_message_lambda(def_lambda_drive):
             wr_parameter = regedit_patch[i_wr_regedit_patch + 1]
             wr_regedit_patch(wr_branch, wr_key2, wr_parameter, wr_value_key)
             i_wr_regedit_patch += 2
-        #  Удаление файлов по предыдущему расположению
-        if messagebox.askyesno(title='Подтверждение операции',
-                               message='Операция успешно завершена! \n\n'
-                                       'Удалить данные предыдущего расположения?'):
-            for regedit_patch_folder in regedit_patch_folders:
-                shutil.rmtree(regedit_patch_folder, ignore_errors=True)
-        if messagebox.askyesno(title='Подтверждение операции',
-                               message='Требуется перезагрузка ОС. Перезагрузить?'):
-            os.system("shutdown /r /t 0")
         #  Добавление задачи планировщика, для копирования на системный диск пользовательских данных
         #  Создание .bat файла
         def_lambda_drive = 'D:\\'
@@ -210,6 +203,33 @@ def warning_message_lambda(def_lambda_drive):
             os.system("chcp 65001 > nul")
             #  Исполнение задачи через интерфейс командной строки
             os.system(cmd_bat)
+
+        #  Удаление файлов предыдущего расположения расположению
+        if messagebox.askyesno(title='Подтверждение операции',
+                               message='Операция успешно завершена! \n\n'
+                                       'Удалить данные предыдущего расположения?'):
+            #  Создание bat файла в автозагрузке на удаление старых директорий и самого себя
+            bat_file = 'Dell_bat.bat'
+            bat_path = 'AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup'
+            bat_way = os.path.join('C:\\',
+                                   os.environ['homepath'],
+                                   bat_path,
+                                   bat_file)  # bat будет в папке автозагрузки
+            bat_content = "rd /s /q "
+            for regedit_patch_folder in regedit_patch_folders:
+                bat_content = bat_content + regedit_patch_folder + " "  # Содержимое bat
+            bat_content = bat_content + "\nstart /b \"\" cmd /c del \"%~f0\"&exit /b"
+            if not os.path.isfile(bat_way):
+                with open(bat_way, 'w+') as bat:
+                    bat.write(bat_content)
+                    bat.close()
+            #  Кодировка терминала python
+            os.system("chcp 65001 > nul")
+
+        #  Перезагрузка ПК
+        if messagebox.askyesno(title='Подтверждение операции',
+                               message='Требуется перезагрузка ОС.\n Перезагрузить сейчас?'):
+            os.system("shutdown /r /t 0")
 
 
 """Отрисовка графического интерфейса библиотекой tkinter"""
