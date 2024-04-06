@@ -10,7 +10,6 @@ import sys
 """Конфигурация"""
 
 drives = os.listdrives()  # Получение информации о существующих томах в системе
-
 # Названия копируемых пользовательских папок
 folders = ['Видео', 'Документы', 'Загрузки', 'Изображения', 'Музыка', 'Рабочий стол']
 # Названия параметров реестра отвечающих за расположение данных пользовательских папок
@@ -22,11 +21,10 @@ regedit_patch = ['My Video', '{35286A68-3C57-41A1-BBB1-0EAE73D76C95}',  # Вид
                  'Desktop', '{754AC886-DF64-4CBA-86B5-F7FBF4FBCEF5}']  # Рабочий стол
 destination_folder = "Mirror"  # Название новой корневой папки для пользовательских данных
 
+"""Блок функций"""
 
-"""Блоки функций"""
 
-
-# Функция обработки кнопок в которую помещена лямбда
+# Лямбда-функция, обработки кнопок (главная)
 def warning_message(def_drive):
     return lambda: warning_message_lambda(def_drive)
 
@@ -54,29 +52,30 @@ def regedit_search_folders(regedit_patch_1, regedit_patch_2):
                 key = winreg.QueryValueEx(key, regedit_patch_1)
                 return key[0]
             except OSError:
-                try:
-                    key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                                         r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders',
-                                         0, winreg.KEY_READ)
-                    key = winreg.QueryValueEx(key, regedit_patch_2)
-                    return key[0]
-                except OSError:
-                    print('Ключ реестра не найден')
+                #  try:
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                     r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders',
+                                     0, winreg.KEY_READ)
+                key = winreg.QueryValueEx(key, regedit_patch_2)
+                return key[0]
+                #  except OSError:
+                #  print('Ключ реестра не найден')
 
 
-#  Изменение параметров ключей реестра отвечающих за расположение пользовательских папок
+#  Функция изменения параметров ключей реестра отвечающих за расположение пользовательских папок
 def wr_regedit_patch(wr_branch, wr_key, wr_parameter, wr_value_key):
     wr_keys = winreg.OpenKey(wr_branch, wr_key, 0, winreg.KEY_ALL_ACCESS)  # Открыть ключ
     try:
         winreg.QueryValueEx(wr_keys, wr_parameter)  # Существует ли параметр
         winreg.SetValueEx(wr_keys, wr_parameter, 0, winreg.REG_SZ, wr_value_key)  # Изменить значение параметра
         #  print(f'Найден {wr_branch} + {wr_key} + {wr_parameter}')
-    except FileNotFoundError:
-        print(f'Не найден {wr_branch} + {wr_key} + {wr_parameter}')
-    winreg.CloseKey(wr_keys)
+    #  except FileNotFoundError:
+        #  print(f'Не найден {wr_branch} + {wr_key} + {wr_parameter}')
+    finally:
+        winreg.CloseKey(wr_keys)
 
 
-# Главная функция, тело программы, которую вызывает лямбда, тело программы после нажатия кнопок
+# Функция - тело программы, которую вызывает лямбда-функция
 def warning_message_lambda(def_lambda_drive):
     if messagebox.askyesno(title='Подтверждение операции',
                            message='Вы уверены что хотите выбрать диск ' + def_lambda_drive + '?'):
@@ -188,7 +187,6 @@ def warning_message_lambda(def_lambda_drive):
             i_wr_regedit_patch += 2
         #  Добавление задачи планировщика, для копирования на системный диск пользовательских данных
         #  Создание .bat файла
-        def_lambda_drive = 'D:\\'
         # Содержимое bat файла
         bat_content = "robocopy " + def_lambda_drive + destination_folder + " C:\\" + destination_folder + " /MIR"
         # bat будет создан на выбранном пользователем диске
@@ -215,7 +213,7 @@ def warning_message_lambda(def_lambda_drive):
                                    os.environ['homepath'],
                                    bat_path,
                                    bat_file)  # bat будет в папке автозагрузки
-            bat_content = "rd /s /q "
+            bat_content = "chcp 1251\nrd /s /q "  # Кодировка cmd 1251
             for regedit_patch_folder in regedit_patch_folders:
                 bat_content = bat_content + regedit_patch_folder + " "  # Содержимое bat
             bat_content = bat_content + "\nstart /b \"\" cmd /c del \"%~f0\"&exit /b"
