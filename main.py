@@ -52,14 +52,14 @@ def regedit_search_folders(regedit_patch_1, regedit_patch_2):
                 key = winreg.QueryValueEx(key, regedit_patch_1)
                 return key[0]
             except OSError:
-                #  try:
-                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                                     r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders',
-                                     0, winreg.KEY_READ)
-                key = winreg.QueryValueEx(key, regedit_patch_2)
-                return key[0]
-                #  except OSError:
-                #  print('Ключ реестра не найден')
+                try:
+                    key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                                         r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders',
+                                         0, winreg.KEY_READ)
+                    key = winreg.QueryValueEx(key, regedit_patch_2)
+                    return key[0]
+                except OSError:
+                    print('Ключ реестра не найден')
 
 
 #  Функция изменения параметров ключей реестра отвечающих за расположение пользовательских папок
@@ -69,10 +69,9 @@ def wr_regedit_patch(wr_branch, wr_key, wr_parameter, wr_value_key):
         winreg.QueryValueEx(wr_keys, wr_parameter)  # Существует ли параметр
         winreg.SetValueEx(wr_keys, wr_parameter, 0, winreg.REG_SZ, wr_value_key)  # Изменить значение параметра
         #  print(f'Найден {wr_branch} + {wr_key} + {wr_parameter}')
-    #  except FileNotFoundError:
-        #  print(f'Не найден {wr_branch} + {wr_key} + {wr_parameter}')
-    finally:
-        winreg.CloseKey(wr_keys)
+    except FileNotFoundError:
+        print(f'Не найден {wr_branch} + {wr_key} + {wr_parameter}')
+    winreg.CloseKey(wr_keys)
 
 
 # Функция - тело программы, которую вызывает лямбда-функция
@@ -192,7 +191,7 @@ def warning_message_lambda(def_lambda_drive):
         # bat будет создан на выбранном пользователем диске
         bat_path = os.path.join(def_lambda_drive, 'RoboCopy_start.bat')
         if not os.path.isfile(bat_path):
-            with open(bat_path, 'w+') as bat:
+            with open(bat_path, 'w+', encoding='utf-8') as bat:
                 bat.write(bat_content)
                 bat.close()
             #  Объявление задачи, для планировщика windows на исполнение bat файла
@@ -213,16 +212,15 @@ def warning_message_lambda(def_lambda_drive):
                                    os.environ['homepath'],
                                    bat_path,
                                    bat_file)  # bat будет в папке автозагрузки
-            bat_content = "chcp 1251\nrd /s /q "  # Кодировка cmd 1251
+            top = "@echo off\nchcp 65001>nul \n"
+            bat_content_del = ""
             for regedit_patch_folder in regedit_patch_folders:
-                bat_content = bat_content + regedit_patch_folder + " "  # Содержимое bat
-            bat_content = bat_content + "\nstart /b \"\" cmd /c del \"%~f0\"&exit /b"
+                bat_content_del = bat_content_del + "RD /S /Q \"" + regedit_patch_folder + "\"\n"  # Содержимое bat
+            bat_content_del = top + bat_content_del + "start /b \"\" cmd /c del \"%~f0\"&exit /b"
             if not os.path.isfile(bat_way):
-                with open(bat_way, 'w+') as bat:
-                    bat.write(bat_content)
-                    bat.close()
-            #  Кодировка терминала python
-            os.system("chcp 65001 > nul")
+                with open(bat_way, 'w+', encoding='utf-8') as bat:
+                    bat.write(bat_content_del)
+            bat.close()
 
         #  Перезагрузка ПК
         if messagebox.askyesno(title='Подтверждение операции',
