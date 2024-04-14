@@ -65,12 +65,20 @@ def regedit_search_folders(regedit_patch_1, regedit_patch_2):
 #  Функция изменения параметров ключей реестра отвечающих за расположение пользовательских папок
 def wr_regedit_patch(wr_branch, wr_key, wr_parameter, wr_value_key):
     wr_keys = winreg.OpenKey(wr_branch, wr_key, 0, winreg.KEY_ALL_ACCESS)  # Открыть ключ
-    try:
-        winreg.QueryValueEx(wr_keys, wr_parameter)  # Существует ли параметр
-        winreg.SetValueEx(wr_keys, wr_parameter, 0, winreg.REG_SZ, wr_value_key)  # Изменить значение параметра
-        #  print(f'Найден {wr_branch} + {wr_key} + {wr_parameter}')
-    except FileNotFoundError:
-        print(f'Не найден {wr_branch} + {wr_key} + {wr_parameter}')
+    if wr_key == r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders':
+        try:
+            winreg.QueryValueEx(wr_keys, wr_parameter)  # Существует ли параметр
+            winreg.SetValueEx(wr_keys, wr_parameter, 0, winreg.REG_SZ, wr_value_key)  # Изменить значение параметра
+            #  print(f'Найден {wr_branch} + {wr_key} + {wr_parameter}')
+        except FileNotFoundError:
+            print(f'Не найден {wr_branch} + {wr_key} + {wr_parameter}')
+    if wr_key == r'SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders':
+        try:
+            winreg.QueryValueEx(wr_keys, wr_parameter)  # Существует ли параметр
+            winreg.SetValueEx(wr_keys, wr_parameter, 0, winreg.REG_EXPAND_SZ, wr_value_key)
+            #  print(f'Найден {wr_branch} + {wr_key} + {wr_parameter}')
+        except FileNotFoundError:
+            print(f'Не найден {wr_branch} + {wr_key} + {wr_parameter}')
     winreg.CloseKey(wr_keys)
 
 
