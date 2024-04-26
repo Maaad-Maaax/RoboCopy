@@ -240,6 +240,7 @@ def warning_message_lambda(def_lambda_drive):
 robocopy = tkinter.Tk()  # Объявление окна приложения
 robocopy.title('RoboCopy 1.0')  # Заголовок окна приложения
 robocopy.iconbitmap('RoboCopy.ico')  # ICO приложения
+robocopy.attributes('-topmost', True)
 robocopy.attributes('-alpha', 0.875)  # Задание прозрачности окна приложения
 
 # Главный контейнер
